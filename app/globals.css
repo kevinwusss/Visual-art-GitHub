@@ -1,0 +1,675 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Cormorant";
+  src: url("/fonts/cormorant-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant";
+  src: url("/fonts/cormorant-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/*
+  语义色 → Tailwind 工具类。
+  `inline` 表示这些主题变量本身不输出，工具类直接用 var(--paper) 这类值，
+  所以 bg-paper / text-ink / border-line 的取值完全跟随 :root（深色模式下被整体覆盖）。
+
+  这样做是为了取代过去「手写一张 hex → 深色 hex 的映射表」：
+  映射表漏掉任意一个色值，那个组件在深色模式下就会破功（例如 #e5e2da）。
+  现在只有 :root 与 [data-theme="dark"] 两处定义颜色，组件一律用语义名。
+*/
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-olive: var(--olive);
+  /* 图片/卡片底板、次级面板、骨架底色 */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  /* 深色块上的文字（与 --ink 相反） */
+  --color-on-ink: var(--on-ink);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+}
+
+/*
+  重要：基础样式必须放在 @layer base 里。
+  Tailwind v4 的工具类位于 @layer utilities，而「未分层」的规则优先级高于任何分层规则——
+  如果把 a/button 的规则写在层外，text-[...] / text-xs 这类工具类会被静默覆盖
+  （曾导致深色按钮出现黑底黑字、按钮字号被强制成 16px）。
+*/
+@layer base {
+  :root {
+    --paper: #f5f3ee;
+    --ink: #111;
+    --muted: #68665f;
+    --line: #d9d6ce;
+    --olive: #646b52;
+    --surface: #e3e0d8;
+    --surface-2: #eeece5;
+    --surface-3: #dedbd2;
+    --line-soft: #e5e2da;
+    --line-strong: #bcb9b0;
+    --on-ink: #f5f3ee;
+    /* 深色块 hover 时的底色（比 --ink 略浅/略深一档） */
+    --ink-soft: #2f2e2a;
+    --ok: #4a5240;
+    --warn: #8a6a3f;
+    /* 动效 token：与 lib/motion.ts 保持一致 */
+    --ease-editorial: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-quiet: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-instant: 120ms;
+    --dur-fast: 200ms;
+    --dur-base: 320ms;
+    --dur-slow: 520ms;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* 横向溢出兜底：个别卡片/导轨的负边距不应把整页撑出横向滚动条。
+       clip 不会像 hidden 那样创建滚动容器，因此不影响顶部 sticky 与 scroll-behavior。 */
+    overflow-x: clip;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    /* 中文优先 + 平台原生 UI 字（不使用 Arial/Helvetica 这类通用回退） */
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC",
+      system-ui, -apple-system, "Segoe UI", "Source Han Sans SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 { text-wrap: balance; }
+  button, input, textarea, select { touch-action: manipulation; }
+  button:disabled { cursor: not-allowed; }
+  [id] { scroll-margin-top: 100px; }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* 浏览器表面也属于设计系统：选中色、光标、焦点环、滚动条 */
+  ::selection {
+    background: rgba(100, 107, 82, 0.22);
+    color: var(--ink);
+  }
+
+  input,
+  textarea {
+    caret-color: var(--olive);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--ink);
+    outline-offset: 3px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #bcb9b0 transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #c9c5ba;
+    border: 3px solid var(--paper);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #b0aca1;
+  }
+}
+
+/* 表单控件的焦点环必须用「未分层」规则补回：
+  各视图普遍写了 outline-none（utilities 层）却没有替代的焦点样式，
+  键盘用户完全看不到焦点落在哪个输入框。未分层规则优先级高于任何分层规则，
+  因此这里能可靠地覆盖 outline-none。
+*/
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: 2px solid var(--olive);
+  outline-offset: 2px;
+}
+
+/*
+  图片载入收束（components/ui.tsx 的 <Img>）：
+  容器比例已经由 aspect-* 定好，所以这里只做透明度淡入，不会产生布局位移。
+  transform 也一并放进 transition —— 否则 .card-lift 那类 hover 缩放会失去缓动。
+*/
+.img-fade {
+  opacity: 0;
+  transition:
+    opacity var(--dur-slow) var(--ease-editorial),
+    transform var(--dur-slow) var(--ease-editorial);
+}
+
+.img-fade[data-ready="true"] {
+  opacity: 1;
+}
+
+/* 图片本身没有动画需求时（reduced-motion）直接呈现，不做淡入 */
+@media (prefers-reduced-motion: reduce) {
+  .img-fade {
+    opacity: 1;
+    transition: none;
+  }
+}
+
+/*
+  ===== 滚动入场（渐进增强） =====
+
+  设计要点：
+  1. 没有 JS 时内容必须完整可见 —— 所以「隐藏起始态」整体挂在 html.js-reveal 之下，
+     这个类由 app/layout.tsx 里的阻塞式内联脚本添加。
+  2. 起始/结束态用 transition 而不是 @keyframes：只有 opacity/transform 两个合成属性，
+     延迟交给 transition-delay，不存在 fill-mode 的边界问题。
+  3. 触发由 IntersectionObserver 负责（components/motion.tsx）。
+     过去这里是挂载即播的 CSS 动画，导致页面一加载整页就播完了、
+     用户真正滚到下面时早已没有动画 —— 这才是「动效不流畅」的根因。
+  4. html.reveal-timeout 是兜底：内联脚本设了一个定时器，
+     若主包迟迟没启动（加载失败/离线），定时器到点后强制显示全部内容，避免白屏。
+*/
+html.js-reveal .reveal {
+  opacity: 0;
+  /* 起始位移/缩放由变体决定，默认上浮 16px */
+  transform: var(--reveal-from, translate3d(0, 16px, 0));
+  transition:
+    opacity var(--reveal-dur, var(--dur-slow)) var(--ease-editorial) var(--enter-delay, 0ms),
+    transform var(--reveal-dur, var(--dur-slow)) var(--ease-editorial) var(--enter-delay, 0ms),
+    border-color var(--dur-fast) var(--ease-quiet);
+}
+
+/* 图片/卡片：轻微收束，不做位移 */
+.reveal--scale {
+  --reveal-from: scale(1.015);
+}
+
+/* 作者级入场：只用于首页报头这类小面积隔离区域（模糊在大面积上会掉帧） */
+.reveal--focal {
+  --reveal-from: translate3d(0, 26px, 0);
+  /* 报头是全站唯一「作者级」的一拍，比其他入场慢一档 */
+  --reveal-dur: 760ms;
+}
+
+html.js-reveal .reveal.is-revealed,
+html.reveal-timeout .reveal[data-reveal-mounted="false"] {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* 结束态要回到 scale(1)：revealed 用的是 transform:none，即恒等变换 */
+
+@layer components {
+  .serif {
+    font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  }
+
+  /*
+    衬线族：拉丁字形永远走最前面的 Georgia，
+    中文字符再依次落到各平台的宋体（macOS 的 Songti SC、Windows 的 SimSun）。
+    顺序不能反过来 —— 若让中文字体排在前面，拉丁字母会被宋体的西文字形接管，
+    报头那种大字号下会明显发虚。
+    开启 kerning / 连字，让大字号标题的字距紧实。
+  */
+  .serif {
+    font-family: Georgia, "Times New Roman", "Songti SC", "Source Han Serif SC",
+      "Noto Serif SC", "SimSun", serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .display {
+    font-family: Georgia, "Times New Roman", "Songti SC", "Source Han Serif SC",
+      "Noto Serif SC", "SimSun", serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    font-size: clamp(3.5rem, 8vw, 7.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.035em;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+  }
+
+  /* 版块编号（01 / 02 / 03）：编辑设计的骨架，替代纯装饰的分隔线 */
+  .section-index {
+    font-family: Georgia, "Times New Roman", "Songti SC", serif;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .body-copy {
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .grain {
+    background-image: radial-gradient(rgba(17, 17, 17, 0.06) 0.7px, transparent 0.7px);
+    background-size: 7px 7px;
+  }
+
+  /* 主操作按钮：保证深色块上的文字始终清晰、中文也有合适字距 */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    background: var(--ink);
+    color: var(--on-ink);
+    padding: 0.8rem 1.35rem;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    transition:
+      background-color var(--dur-fast) var(--ease-quiet),
+      color var(--dur-fast) var(--ease-quiet),
+      transform var(--dur-instant) var(--ease-editorial);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--ink-soft);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+
+  .btn-primary:disabled {
+    background: var(--line-strong);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    padding: 0.7rem 1.2rem;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    transition:
+      background-color var(--dur-fast) var(--ease-quiet),
+      color var(--dur-fast) var(--ease-quiet),
+      transform var(--dur-instant) var(--ease-editorial);
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+
+  .btn-outline:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+
+  .btn-outline:disabled {
+    border-color: var(--line-strong);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  /* 卡片：悬停只做轻微上浮 + 图片收束（transform only） */
+  .card-lift {
+    transition: transform var(--dur-base) var(--ease-editorial);
+  }
+
+  .card-lift:hover {
+    transform: translateY(-3px);
+  }
+
+  /* 衣橱是高频操作页：控件保持编辑感，但把操作层级拉开。 */
+  .wardrobe-toolbar {
+    background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    border-block: 1px solid var(--line);
+  }
+
+  .wardrobe-panel {
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-2) 62%, transparent);
+  }
+
+  .wardrobe-filter {
+    min-height: 44px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    padding-inline: 0.8rem;
+    transition: border-color var(--dur-fast) var(--ease-quiet), background-color var(--dur-fast) var(--ease-quiet);
+  }
+
+  .wardrobe-filter:hover,
+  .wardrobe-filter:focus-visible {
+    border-color: var(--ink);
+    background: var(--paper);
+  }
+
+  .wardrobe-card {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1rem;
+  }
+
+  .wardrobe-card[data-selected="true"] {
+    border-bottom-color: var(--olive);
+  }
+
+  .wardrobe-dropzone {
+    border: 1px dashed var(--line-strong);
+    color: var(--muted);
+    min-height: 44px;
+    padding-inline: 0.8rem;
+    transition: border-color var(--dur-fast) var(--ease-quiet), color var(--dur-fast) var(--ease-quiet), background-color var(--dur-fast) var(--ease-quiet);
+  }
+
+  .wardrobe-dropzone:hover,
+  .wardrobe-dropzone:focus-visible {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  /* 链接：下划线以缓动展开，替代生硬的 hover 变色 */
+  .link-underline {
+    position: relative;
+  }
+
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-base) var(--ease-editorial);
+  }
+
+  .link-underline:hover::after,
+  .link-underline:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  /* 骨架屏：用遮罩扫光替代透明度忽明忽暗 */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-3);
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: skeleton-sweep 1.6s var(--ease-quiet) infinite;
+  }
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/*
+  换页不再单独做一次淡入。
+  过去 .route-enter > main 会和 main 内部所有入场动画同时播放，
+  两层 opacity 相乘，换页时整页一起变暗再变亮。
+  现在入场一律交给 .reveal（滚动到达才播），换页只负责重新挂载组件。
+*/
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* 去掉位移/缩放，保留颜色与透明这类承载状态的反馈 */
+  .card-lift:hover,
+  .btn-primary:active:not(:disabled),
+  .btn-outline:active:not(:disabled) {
+    transform: none;
+  }
+
+  .skeleton::after {
+    animation: none;
+  }
+
+  /* 入场动画全部停用：内容直接以最终状态呈现。
+     内联脚本在 reduced-motion 下本来就不会加 js-reveal，
+     这里再兜一层，防止用户中途在系统里打开「减少动态效果」。 */
+  html.js-reveal .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+
+/*
+  ===== 深色主题 =====
+  只需覆盖这一组语义变量，所有用 bg-paper / text-ink / border-line
+  这类工具类写的组件会自动跟着变；切换回浅色只是移除 data-theme。
+  <html data-theme="dark"> 由 components/theme-sync.tsx 写入，
+  首屏的那一次由 app/layout.tsx 的内联脚本在绘制前写好（避免白闪）。
+
+  下面的 .bg-[#...] 段落是给「还没迁移到语义色」的旧组件用的过渡映射表，
+  迁移完成后可以整体删除。
+*/
+[data-theme="dark"] {
+  --paper: #0d0d0c;
+  --ink: #f2efe8;
+  --muted: #a5a29a;
+  --line: #2a2a28;
+  --olive: #93a075;
+  --surface: #1c1c1a;
+  --surface-2: #161615;
+  --surface-3: #1c1c1a;
+  --line-soft: #2a2a28;
+  --line-strong: #3a3a36;
+  --on-ink: #111110;
+  --ink-soft: #dedbd2;
+  --ok: #a3b184;
+  --warn: #d2a96b;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* 背景：纸 → 近黑；卡片/图片底板 → 深灰 */
+[data-theme="dark"] .bg-\[\#f5f3ee\],
+[data-theme="dark"] .bg-\[\#f5f3ee\]\/80,
+[data-theme="dark"] .bg-\[\#f5f3ee\]\/85,
+[data-theme="dark"] .bg-\[\#f5f3ee\]\/90,
+[data-theme="dark"] .bg-\[\#f5f3ee\]\/95 {
+  background-color: rgba(13, 13, 12, 0.92);
+}
+[data-theme="dark"] .bg-\[\#eeece5\] { background-color: #161615; }
+[data-theme="dark"] .bg-\[\#e3e0d8\],
+[data-theme="dark"] .bg-\[\#dedbd2\],
+[data-theme="dark"] .bg-\[\#ddd\] { background-color: #1c1c1a; }
+[data-theme="dark"] .bg-\[\#111\] { background-color: #f2efe8; }
+[data-theme="dark"] .bg-\[\#c9c5ba\] { background-color: #2b2b28; }
+[data-theme="dark"] .bg-\[\#646b52\] { background-color: #93a075; }
+[data-theme="dark"] .bg-\[\#d9d6ce\] { background-color: #2a2a28; }
+
+/* 文字：墨黑 → 米白；次级灰 → 亮灰 */
+[data-theme="dark"] .text-\[\#111\] { color: #f2efe8; }
+[data-theme="dark"] .text-\[\#f5f3ee\] { color: #111110; }
+[data-theme="dark"] .text-\[\#716f68\] { color: #a5a29a; }
+[data-theme="dark"] .text-\[\#9c988d\] { color: #8b8880; }
+[data-theme="dark"] .text-\[\#646b52\] { color: #a3b184; }
+[data-theme="dark"] .text-\[\#4a5240\] { color: #a3b184; }
+[data-theme="dark"] .text-\[\#8a6a3f\] { color: #d2a96b; }
+[data-theme="dark"] .placeholder\:text-\[\#7d7a72\]::placeholder { color: #8b8880; }
+
+/* 边框与分隔线 */
+[data-theme="dark"] .border-\[\#d9d6ce\] { border-color: #2a2a28; }
+[data-theme="dark"] .border-\[\#111\] { border-color: #f2efe8; }
+[data-theme="dark"] .border-\[\#bcb9b0\] { border-color: #3a3a36; }
+/* #e5e2da 曾是漏网色值：wardrobe-picks 用了它，深色模式下会留一条白边 */
+[data-theme="dark"] .border-\[\#e5e2da\] { border-color: #2a2a28; }
+[data-theme="dark"] .border-\[\#646b52\] { border-color: #93a075; }
+[data-theme="dark"] .border-\[\#8a6a3f\] { border-color: #d2a96b; }
+[data-theme="dark"] .divide-\[\#d9d6ce\] > * + * { border-color: #2a2a28; }
+
+/*
+  组件层：按钮与骨架的深色样式已经由上面的语义变量接管
+  （.btn-primary 用 var(--ink)/var(--on-ink)，.skeleton 用 var(--surface-3)），
+  这里不再重复定义，避免同一个颜色出现两处来源。
+*/
+[data-theme="dark"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+/* 浏览器表面：选中、滚动条、焦点环 */
+[data-theme="dark"] ::selection {
+  background: rgba(147, 160, 117, 0.3);
+  color: #f2efe8;
+}
+[data-theme="dark"] * {
+  scrollbar-color: #3a3a36 transparent;
+}
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: #3a3a36;
+  border-color: #0d0d0c;
+}
+[data-theme="dark"] :focus-visible {
+  outline-color: var(--ink);
+}
+[data-theme="dark"] body {
+  background: var(--paper);
+}
+
+/* Editorial cover: portrait crops, an asymmetric contact sheet, and a quiet reading column. */
+.home-cover { padding-top: clamp(28px, 4vw, 54px); }
+.cover-grid { display: grid; grid-template-columns: .95fr 1.15fr; gap: clamp(32px, 5vw, 76px); align-items: center; }
+.cover-copy { min-width: 0; }
+.cover-wordmark { font-family: "Cormorant", Georgia, serif; font-size: clamp(64px, 7.6vw, 104px); font-weight: 400; line-height: .95; letter-spacing: -.035em; white-space: nowrap; margin: 0; }
+.cover-period { color: var(--olive); }
+.cover-statement { font-size: clamp(30px, 3.1vw, 43px); line-height: 1.4; margin-top: 30px; letter-spacing: -.025em; }
+.cover-statement i { font-weight: 400; }
+.cover-description { max-width: 31ch; margin-top: 20px; font-size: 14px; line-height: 1.95; }
+.cover-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 26px; margin-top: 28px; }
+.cover-actions .btn-primary { min-height: 48px; padding-inline: 23px; }
+.cover-explore { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding-block: 12px; }
+.cover-quiz { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); margin-top: 34px; padding-top: 18px; max-width: 330px; color: var(--muted); font-size: 11px; line-height: 1.9; }
+.cover-quiz strong { display: block; color: var(--ink); font-weight: 500; font-size: 12px; }
+.cover-gallery { display: grid; grid-template-columns: 1.8fr 1fr; align-items: end; gap: 20px; min-width: 0; }
+.cover-photo { position: relative; overflow: hidden; aspect-ratio: 2 / 3; background: var(--surface); }
+.cover-primary .cover-photo { max-height: 514px; }
+.cover-gallery figcaption { display: flex; justify-content: space-between; gap: 6px; padding-top: 12px; font-size: 9px; letter-spacing: .12em; color: var(--muted); }
+.cover-photo-link { position: absolute; bottom: 0; right: 0; width: 42px; height: 42px; display: grid; place-items: center; background: var(--paper); color: var(--ink); }
+.cover-side { padding-bottom: 34px; }
+.cover-side-note { font-family: "Cormorant", Georgia, serif; font-size: clamp(20px, 2.1vw, 30px); line-height: 1.08; margin-bottom: 36px; }
+.cover-credit { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 9px; line-height: 1.7; color: var(--muted); margin-top: 20px; }
+.cover-colophon { display: flex; justify-content: space-between; gap: 18px; margin-top: 34px; padding-block: 17px; border-block: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: .14em; }
+.styling-desk { margin-top: 0; padding-block: 30px; border-bottom: 1px solid var(--line); }
+.editorial-section { margin-top: clamp(64px, 7vw, 104px); }
+.editorial-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+.editorial-heading h2 { font-size: clamp(30px, 3.1vw, 44px); line-height: 1.18; letter-spacing: -.025em; }
+.editorial-heading-note { margin-top: 14px; max-width: 62ch; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; }
+.site-actions { gap: 2px; }
+.site-actions > a, .site-actions > button { min-width: 40px; min-height: 40px; justify-content: center; display: inline-flex; align-items: center; }
+.site-footer { margin-top: 84px; border-top: 1px solid var(--line); padding-block: 32px 24px; }
+.site-footer-top { display: flex; justify-content: space-between; align-items: start; gap: 32px; }
+.site-footer-mark { font-family: "Cormorant", Georgia, serif; font-size: 38px; line-height: 1; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 12px 26px; font-size: 12px; }
+.site-footer-bottom { display: flex; justify-content: space-between; gap: 20px; margin-top: 30px; color: var(--muted); font-size: 10px; line-height: 1.8; }
+.bottom-navigation a { min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.bottom-navigation a[aria-current="page"] { color: var(--ink); }
+.bottom-navigation a[aria-current="page"]::after { content: ""; width: 12px; height: 2px; background: var(--olive); }
+@media (prefers-reduced-motion: no-preference) {
+  .cover-copy { animation: cover-arrive 650ms var(--ease-editorial) both; }
+  .cover-gallery { animation: cover-arrive 800ms var(--ease-editorial) 90ms both; }
+}
+@keyframes cover-arrive { from { opacity: .7; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (max-width: 1023px) {
+  .cover-grid { grid-template-columns: 1fr 1.05fr; gap: 30px; }
+  .cover-wordmark { font-size: clamp(54px, 7.7vw, 78px); }
+  .cover-gallery { gap: 12px; }
+  .cover-side { padding-bottom: 12px; }
+  .cover-side-note { margin-bottom: 22px; }
+  .cover-primary figcaption { flex-direction: column; }
+  .cover-credit { font-size: 8px; }
+  .cover-statement { margin-top: 22px; }
+  .cover-quiz { margin-top: 24px; }
+}
+@media (max-width: 639px) {
+  .home-cover { padding-top: 26px; }
+  .cover-grid { grid-template-columns: 1fr; gap: 30px; }
+  .cover-wordmark { font-size: clamp(64px, 16vw, 88px); }
+  .cover-statement { font-size: 30px; line-height: 1.3; margin-top: 20px; }
+  .cover-statement br { display: none; }
+  .cover-description { max-width: 35ch; margin-top: 14px; font-size: 13px; }
+  .cover-actions { margin-top: 22px; gap: 18px; }
+  .cover-quiz { display: none; }
+  .cover-gallery { grid-template-columns: 1.75fr 1fr; gap: 16px; }
+  .cover-side-note { font-size: 23px; margin-bottom: 26px; }
+  .cover-primary figcaption { flex-direction: row; font-size: 8px; }
+  .cover-colophon { font-size: 8px; letter-spacing: .06em; margin-top: 22px; }
+  .site-actions > a, .site-actions > button { min-width: 36px; min-height: 44px; }
+  .site-actions > a[href="/profile"] { display: none; }
+  .site-footer-top, .site-footer-bottom { flex-direction: column; gap: 22px; }
+  .site-footer { margin-top: 56px; }
+  input, textarea, select { font-size: max(16px, 1em); }
+}
+
+@media (min-width: 1024px) {
+  .site-actions > button[aria-controls="mobile-menu"] { display: none; }
+  .cover-gallery { max-width: 570px; justify-self: end; width: 100%; }
+  .cover-primary .cover-photo { max-height: none; }
+}
+@media (hover: none) {
+  .card-lift:hover { transform: none; }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "visual-arts-stylist",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test scripts/*.test.mjs",
+    "check:publish": "node scripts/check-publish.mjs",
+    "app:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 start",
+    "app:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 restart",
+    "app:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 stop",
+    "app:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 status"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "latest",
+    "framer-motion": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwindcss": "latest",
+    "zustand": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "jsdom": "^30.0.1",
+    "typescript": "latest"
+  }
+}
